@@ -1,0 +1,61 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Space Grotesk", "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Cinzel", "Playfair Display", Georgia, Cambria, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  body {
+    background-color: #030304;
+    color: #e2dcd0;
+    font-family: var(--font-serif);
+  }
+}
+
+/* Sophisticated Dark Custom styles */
+.gold-glow {
+  box-shadow: 0 0 15px rgba(197, 160, 89, 0.2);
+}
+
+.gold-glow-large {
+  box-shadow: 0 0 40px rgba(197, 160, 89, 0.15);
+}
+
+.gold-glow-card {
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8), 0 0 20px rgba(197, 160, 89, 0.08);
+}
+
+.gold-dotted-bg {
+  background-image: radial-gradient(#c5a059 0.5px, transparent 0.5px);
+  background-size: 24px 24px;
+}
+
+.pulsate-led {
+  animation: pulse-led 2s infinite alternate;
+}
+
+@keyframes pulse-led {
+  0% { opacity: 0.3; filter: brightness(0.8); }
+  100% { opacity: 1.0; filter: brightness(1.7); }
+}
+
+/* Elegant scrollbar customization */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #0d0d0f;
+}
+::-webkit-scrollbar-thumb {
+  background: #c5a059/30;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #c5a059/60;
+}
+
+
