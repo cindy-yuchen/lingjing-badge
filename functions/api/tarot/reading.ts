@@ -129,6 +129,38 @@ ${cardsDetails}
   const model = env.DEEPSEEK_MODEL || DEFAULT_MODEL;
 
   try {
+    const text = await requestReading(apiKey, model, prompt);
+    return json({ text });
+  } catch (err: any) {
+    console.error("[DeepSeek] 解析异常:", err?.message || err);
+    const message = err?.message || "AI Interpretation failed";
+    const status =
+      message.includes("未能生成") || message.includes("调用失败") ? 502 : 500;
+    return json({ error: message }, status);
+  }
+}
+
+/**
+ * 调用 DeepSeek 生成解读文本。
+ *
+ * deepseek-v4-flash 是推理型模型：开启思考(thinking)时，max_tokens 的预算会被
+ * 「思考(reasoning)」吃掉大部分甚至全部，导致最终答案(content)为空或被截断——
+ * 这正是此前六爻「解析失败 / 解析一半」的根因；且开启思考时单次生成常超 70 秒，
+ * 会撞上 Cloudflare Pages Functions 的超时限制。
+ *
+ * 因此这里显式关闭思考模式（thinking.type=disabled），让模型直接输出最终答案：
+ * 速度快（约 10 秒）、不超时、内容完整。若遇极端超长内容被截断，再放大预算重试一次。
+ */
+async function requestReading(
+  apiKey: string,
+  model: string,
+  prompt: string,
+): Promise<string> {
+  const budgets = [8192, 16384];
+
+  for (const max_tokens of budgets) {
+    const isLast = max_tokens === budgets[budgets.length - 1];
+
     const upstream = await fetch(DEEPSEEK_ENDPOINT, {
       method: "POST",
       headers: {
@@ -138,8 +170,8 @@ ${cardsDetails}
       body: JSON.stringify({
         model,
         messages: [{ role: "user", content: prompt }],
-        temperature: 1.0,
-        max_tokens: 4000,
+        max_tokens,
+        thinking: { type: "disabled" },
         stream: false,
       }),
     });
@@ -147,24 +179,37 @@ ${cardsDetails}
     if (!upstream.ok) {
       const errText = await upstream.text();
       console.error(`[DeepSeek] 调用失败 (${upstream.status}):`, errText);
-      return json(
-        { error: `AI 服务调用失败 (${upstream.status})，请稍后重试。` },
-        502,
-      );
+      throw new Error(`AI 服务调用失败 (${upstream.status})，请稍后重试。`);
     }
 
     const data: any = await upstream.json();
-    const text: string = data?.choices?.[0]?.message?.content ?? "";
+    const choice = data?.choices?.[0];
+    const text: string = choice?.message?.content ?? "";
+    const finishReason: string = choice?.finish_reason ?? "";
 
-    if (!text) {
-      return json({ error: "AI 未能生成有效的解析结果，请重试。" }, 502);
+    // 正常结束且拿到最终答案
+    if (text && finishReason !== "length") {
+      return text;
     }
 
-    return json({ text });
-  } catch (err: any) {
-    console.error("[DeepSeek] 解析异常:", err?.message || err);
-    return json({ error: err?.message || "AI Interpretation failed" }, 500);
+    // 因长度被截断：推理预算吃光，若有更大预算则重试，否则用已有内容兜底
+    if (finishReason === "length") {
+      if (!isLast) {
+        console.warn(
+          `[DeepSeek] max_tokens=${max_tokens} 被截断(finish_reason=length)，放大预算重试。`,
+        );
+        continue;
+      }
+      if (text) return text;
+      throw new Error("AI 未能生成有效的解析结果，请重试。");
+    }
+
+    // 未截断但 content 为空（模型罕见地未产出最终答案）
+    if (!isLast) continue;
+    throw new Error("AI 未能生成有效的解析结果，请重试。");
   }
+
+  throw new Error("AI 未能生成有效的解析结果，请重试。");
 }
 
 function json(payload: unknown, status = 200): Response {
