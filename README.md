@@ -1,5 +1,7 @@
 # ESP32-S3 灵镜电子吧唧（Tarot Badge Simulator）
 
+🌐 线上地址：<https://lingjing-badge.pages.dev>
+
 1.75 英寸圆型 AMOLED 灵镜屏 · 六轴 QMI8658 陀螺仪洗牌 · 双麦麦克风 AI 智能解卦。
 一个 ESP32 便携电子吧唧式算卦仪的网页模拟器，塔罗牌阵 / 六爻起卦，由 AI 生成解牌文本。
 
